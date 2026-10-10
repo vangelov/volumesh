@@ -1,0 +1,22 @@
+{
+  "name": "volume",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "archive": "sh -c 'COPYFILE_DISABLE=1 tar -czf \"$1.tar.gz\" --exclude=\".DS_Store\" --exclude=\"._*\" -C \"$(dirname \"$1\")\" \"$(basename \"$1\")\"' --"
+  },
+  "devDependencies": {
+    "@tweakpane/core": "^2.0.5",
+    "typescript": "~6.0.2",
+    "vite": "^8.0.12"
+  },
+  "dependencies": {
+    "gl-matrix": "^3.4.4",
+    "picogl": "^0.17.9",
+    "tweakpane": "^4.0.5"
+  }
+}
