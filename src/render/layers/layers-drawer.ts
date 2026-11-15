@@ -7,7 +7,7 @@ import {
   type Framebuffer,
   type VertexArray,
 } from "picogl";
-import { vec2, vec3 } from "gl-matrix";
+import { vec2 } from "gl-matrix";
 
 import type { DrawParams } from "../draw-params";
 import { LayersProgramSrc } from "./layers-program";

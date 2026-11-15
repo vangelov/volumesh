@@ -6,7 +6,6 @@ import {
   type Framebuffer,
   type VertexArray,
 } from "picogl";
-import { vec3 } from "gl-matrix";
 
 import { PickerProgramSrc } from "./picker-program";
 import type { DrawParams } from "../draw-params";
