@@ -31,6 +31,6 @@ licensing information.
       title: "View 3D Slicer License",
     })
     .on("click", () => {
-      window.open("/3D_SLICER_LICENSE", "_blank");
+      window.open(`${import.meta.env.BASE_URL}3D_SLICER_LICENSE.txt`, "_blank");
     });
 }
