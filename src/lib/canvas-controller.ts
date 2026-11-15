@@ -1,3 +1,4 @@
+// Original source: https://github.com/Twinklebear/webgl-volume-raycaster
 import { vec2 } from "gl-matrix";
 
 type Point = [number, number];
