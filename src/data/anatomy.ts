@@ -21,7 +21,7 @@ export const Anatomy = {
 type CreateParams = Pick<Anatomy, "id" | "info" | "volumes" | "meshes">;
 
 function create({ id, info, volumes, meshes }: CreateParams): Anatomy {
-  const world = World.fromMeshes(meshes);
+  const world = meshes.length ? World.fromMeshes(meshes) : World.fromVolumes(volumes);
 
   const sortedNormalizedMeshes = Mesh.sort(meshes).map((mesh) =>
     Lib.pipe(

@@ -7,6 +7,10 @@ import { State } from "./state";
 import * as Data from "./data";
 import * as Render from "./render";
 
+import { importDicomVolumes } from "./lib/dicom";
+
+const importedAnatomies = new Map<string, Data.Anatomy>();
+
 const state = State.create("thoracic");
 
 let anatomy: Data.Anatomy | null = null;
@@ -14,6 +18,36 @@ let anatomy: Data.Anatomy | null = null;
 const pane = Ui.createAnatomiesPane({
   state,
   onAnatomyChange: loadAndDisplayAnatomy,
+});
+
+const folderInput = document.createElement("input");
+folderInput.type = "file";
+folderInput.setAttribute("webkitdirectory", "");
+folderInput.multiple = true;
+const importButton = pane.addButton({ title: "Import DICOM Folder" });
+importButton.on("click", () => folderInput.click());
+folderInput.addEventListener("change", async () => {
+  const files = Array.from(folderInput.files || []);
+  if (!files.length) return;
+  importButton.disabled = true;
+  state.progress = 0;
+  try {
+    const volumes = await importDicomVolumes(files, (done, total) => { state.progress = done / total * 100; });
+    const name = files[0].webkitRelativePath.split("/")[0] || "DICOM";
+    const id = `dicom-${crypto.randomUUID()}`;
+    const imported = Data.Anatomy.create({ id, volumes, meshes: [], info: { description: `${name}: ${volumes.length} DICOM volume(s). Patient LPS geometry converted to RAS.`, url: "" } });
+    importedAnatomies.set(id, imported);
+    Ui.addAnatomyOption(pane, id, name);
+    state.anatomyId = id;
+    await loadAndDisplayAnatomy(id);
+    pane.refresh();
+  } catch (error) {
+    console.error(error);
+    window.alert(`DICOM import failed: ${error instanceof Error ? error.message : error}`);
+  } finally {
+    importButton.disabled = false;
+    folderInput.value = "";
+  }
 });
 
 let resetButton: ButtonApi | null = null;
@@ -28,17 +62,25 @@ if (!canvas) throw new Error("No canvas found");
 
 const renderer = await Render.Renderer.create(canvas);
 
+let loadVersion = 0;
+
 async function loadAndDisplayAnatomy(anatomyId: string) {
+  const version = ++loadVersion;
+
+  state.progress = 0;
+
+  const imported = importedAnatomies.get(anatomyId);
+  const data = imported ? { anatomy: imported, initialState: null } : await Server.loadAnatomy(anatomyId, (a, b) => {
+    state.progress = (a / b) * 100;
+  });
+
+  if (version !== loadVersion) return;
+  state.anatomyId = anatomyId;
   if (resetButton) resetButton.dispose();
   if (infoFolder) infoFolder.dispose();
   if (volumeFolder) volumeFolder.dispose();
   if (meshesFolder) meshesFolder.dispose();
 
-  state.progress = 0;
-
-  const data = await Server.loadAnatomy(anatomyId, (a, b) => {
-    state.progress = (a / b) * 100;
-  });
 
   State.onAnatomyLoaded(state, data.anatomy, data.initialState);
 
@@ -47,12 +89,12 @@ async function loadAndDisplayAnatomy(anatomyId: string) {
   resetButton = Ui.addResetButton(pane, { onReset });
   infoFolder = Ui.addInfoFolder(pane, anatomy);
   volumeFolder = Ui.addVolumeFolder(pane, { anatomy, state, onVolumeChange });
-  meshesFolder = Ui.addMeshesFolder(pane, {
+  meshesFolder = anatomy.meshes.length ? Ui.addMeshesFolder(pane, {
     state,
     anatomy,
     onShowAllMeshes,
     onHideAllMeshes,
-  });
+  }) : null;
 
   renderer.cameraNeedsReset = true;
   renderer.meshesNeedUpdate = true;
@@ -84,6 +126,10 @@ function onReset() {
 }
 
 function onVolumeChange() {
+  if (anatomy) {
+    volumeFolder?.dispose();
+    volumeFolder = Ui.addVolumeFolder(pane, { anatomy, state, onVolumeChange });
+  }
   renderer.volumeNeedsUpdate = true;
 }
 

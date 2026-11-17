@@ -18,6 +18,7 @@ export type Volume = {
 
 export const Volume = {
   fromNrrd,
+  getRasVec,
   register,
 };
 

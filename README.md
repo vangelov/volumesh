@@ -39,3 +39,23 @@ Open [http://127.0.0.1:5173/](http://127.0.0.1:5173/) to view it in the browser.
 #### `npm run build`
 
 Builds the app for production in the `dist` folder.
+
+### DICOM folder import
+
+Use **Import DICOM Folder** to select a local folder (including subfolders).
+Each CT/MR Series Instance UID becomes a separate volume in the new anatomy;
+use **Volume → Variant** to switch series. Imports stay in memory for this session.
+Other modalities, including RTSTRUCT, are ignored for now.
+
+The importer supports classic single-frame monochrome 8/16-bit images with
+uncompressed little/big-endian or JPEG Lossless (.57/.70) transfer syntaxes.
+Enhanced/multiframe, other compression formats, single-slice images, and
+inconsistent or irregular stacks produce an error. Temporal/echo stacks sharing
+a series UID and repeated spatial positions must be separated before import.
+
+Slices are sorted by Image Position Patient projected onto the orientation normal.
+Pixel Spacing and the full slice displacement (including affine gantry tilt) define
+the voxel axes in patient LPS millimeters. These convert to RAS and normalize
+against the combined volume bounds when no meshes exist. CT/MR from different
+frames of reference are not registered automatically. Rescaled pixel intensities
+are normalized per volume to the renderer's existing 8-bit representation.

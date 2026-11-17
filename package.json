@@ -15,7 +15,9 @@
     "vite": "^8.0.12"
   },
   "dependencies": {
+    "dicom-parser": "^1.8.21",
     "gl-matrix": "^3.4.4",
+    "jpeg-lossless-decoder-js": "^2.1.2",
     "picogl": "^0.17.9",
     "tweakpane": "^4.0.5"
   }

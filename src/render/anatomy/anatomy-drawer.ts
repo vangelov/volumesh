@@ -135,10 +135,7 @@ export class AnatomyDrawer {
         ),
       )
       .uniform("use_clip_sphere", anatomyState.meshes.useClipSphere ? 1 : 0)
-      .uniform(
-        "clip_sphere_center",
-        anatomy.meshes[anatomyState.meshes.meshIndex].center,
-      )
+      .uniform("clip_sphere_center", vec3.fromValues(0, 0, 0))
       .uniform("clip_sphere_radius", anatomyState.meshes.clipRadius)
       .uniform("show_volume", anatomyState.volume.show)
       .uniform("viewport", vec2.fromValues(this.pico.width, this.pico.height))
