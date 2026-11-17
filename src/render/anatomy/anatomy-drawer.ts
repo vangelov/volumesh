@@ -137,7 +137,9 @@ export class AnatomyDrawer {
       .uniform("use_clip_sphere", anatomyState.meshes.useClipSphere ? 1 : 0)
       .uniform(
         "clip_sphere_center",
-        anatomy.meshes[anatomyState.meshes.meshIndex].center,
+        anatomy.meshes.length > 0
+          ? anatomy.meshes[anatomyState.meshes.meshIndex].center
+          : vec3.fromValues(0, 0, 0),
       )
       .uniform("clip_sphere_radius", anatomyState.meshes.clipRadius)
       .uniform("show_volume", anatomyState.volume.show)
