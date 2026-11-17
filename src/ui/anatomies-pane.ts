@@ -13,12 +13,12 @@ const anatomyOptions = [
 
 export function addAnatomyOption(pane: Pane, id: string, label: string) {
   anatomyOptions.push({ text: label, value: id });
-  rebuildAnatomyBinding();
+  rebuildAnatomyBinding?.();
   pane.refresh();
 }
 
 let anatomyBinding: ReturnType<Pane["addBinding"]>;
-let rebuildAnatomyBinding: () => void;
+let rebuildAnatomyBinding: (() => void) | undefined;
 
 type Params = {
   state: State;
@@ -44,7 +44,6 @@ export function createAnatomiesPane({ state, onAnatomyChange }: Params) {
       .on("change", (event) => {
         onAnatomyChange(event.value);
       });
-
   };
   rebuildAnatomyBinding();
 

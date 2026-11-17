@@ -95,10 +95,10 @@ function onAnatomyLoaded(
         opacity: 0.5,
         meshIndex: 0,
 
-        byIndex: anatomy.meshes.map(({ label }) => {
+        byIndex: anatomy.meshes.map(({ label, color }) => {
           return {
             visible: true,
-            color: Lib.hexToRgb(Lib.colorFromLabel(label)),
+            color: color || Lib.hexToRgb(Lib.colorFromLabel(label)),
           };
         }),
       },

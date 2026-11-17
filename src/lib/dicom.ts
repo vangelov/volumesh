@@ -1,12 +1,14 @@
-import * as dicom from "dicom-parser";
+import dicom from "dicom-parser";
+import type { DataSet } from "dicom-parser";
 import { Decoder } from "jpeg-lossless-decoder-js";
 import { mat4, vec3 } from "gl-matrix";
+import { meshesFromRtstruct } from "./rtstruct";
 import type { Volume } from "../data/volume";
 import { TarrayUtils } from "./tarray-utils";
 
-type Slice = { ds: dicom.DataSet; position: vec3; orientation: number[]; spacing: number[]; name: string };
+type Slice = { ds: DataSet; position: vec3; orientation: number[]; spacing: number[]; name: string };
 
-function numbers(ds: dicom.DataSet, tag: string, count: number): number[] {
+function numbers(ds: DataSet, tag: string, count: number): number[] {
   const values = ds.string(tag)?.split("\\").map(Number);
   if (!values || values.length !== count || values.some(v => !Number.isFinite(v))) {
     throw new Error(`Missing or invalid DICOM geometry: ${tag}`);
@@ -16,12 +18,17 @@ function numbers(ds: dicom.DataSet, tag: string, count: number): number[] {
 
 /** Import classic, single-frame CT/MR series. Geometry remains in patient LPS millimeters. */
 export async function importDicomVolumes(files: File[], onProgress: (done: number, total: number) => void): Promise<Volume[]> {
+  return (await importDicomData(files, onProgress)).volumes;
+}
+
+export async function importDicomData(files: File[], onProgress: (done: number, total: number) => void) {
   const series = new Map<string, Slice[]>();
+  const structures: DataSet[] = [];
   const instances = new Set<string>();
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     const bytes = new Uint8Array(await file.arrayBuffer());
-    let ds: dicom.DataSet;
+    let ds: DataSet;
     try { ds = dicom.parseDicom(bytes); }
     catch {
       const part10 = bytes.length >= 132 && String.fromCharCode(...bytes.subarray(128, 132)) === "DICM";
@@ -30,6 +37,7 @@ export async function importDicomVolumes(files: File[], onProgress: (done: numbe
       continue;
     }
     const modality = ds.string("x00080060");
+    if (modality === "RTSTRUCT") structures.push(ds);
     if (modality === "CT" || modality === "MR") {
       if (Number(ds.string("x00280008") || 1) !== 1) throw new Error(`${file.name}: enhanced/multiframe DICOM is not supported yet`);
       const uid = ds.string("x0020000e");
@@ -52,7 +60,10 @@ export async function importDicomVolumes(files: File[], onProgress: (done: numbe
     // Give the UI a chance to update between series.
     await new Promise(resolve => setTimeout(resolve, 0));
   }
-  return volumes;
+  const { meshes, warnings, frameUID } = meshesFromRtstruct(structures, volumes);
+  const compatibleVolumes = frameUID ? volumes.filter(volume => volume.dicom?.frameUID === frameUID) : volumes;
+  if (compatibleVolumes.length !== volumes.length) warnings.push(`Skipped ${volumes.length - compatibleVolumes.length} volume(s) in a different Frame of Reference.`);
+  return { volumes: compatibleVolumes, meshes, warnings };
 }
 
 function buildVolume(slices: Slice[]): Volume {
@@ -84,10 +95,10 @@ function buildVolume(slices: Slice[]): Volume {
   });
   const data = TarrayUtils.normalizeToUint8(values, values.length);
   if (ds.string("x00280004") === "MONOCHROME1") for (let i = 0; i < data.length; i++) data[i] = 255 - data[i];
-  return { label: `${ds.string("x00080060")} · ${ds.string("x0008103e") || "Series"} (${ds.string("x00200011") || ds.string("x0020000e")})`, origin, dims: [cols, rows, slices.length], dirs: [vec3.scale(x, x, first.spacing[1]), vec3.scale(y, y, first.spacing[0]), step], space: "lps", data, volumeToWorld: mat4.create(), worldToVolume: mat4.create() };
+  return { dicom: { seriesUID: ds.string("x0020000e")!, frameUID: ds.string("x00200052"), instanceUIDs: slices.map(slice => slice.ds.string("x00080018") || "") }, label: `${ds.string("x00080060")} · ${ds.string("x0008103e") || "Series"} (${ds.string("x00200011") || ds.string("x0020000e")})`, origin, dims: [cols, rows, slices.length], dirs: [vec3.scale(x, x, first.spacing[1]), vec3.scale(y, y, first.spacing[0]), step], space: "lps", data, volumeToWorld: mat4.create(), worldToVolume: mat4.create() };
 }
 
-function decodePixels(ds: dicom.DataSet, count: number): Float32Array {
+function decodePixels(ds: DataSet, count: number): Float32Array {
   const bits = ds.uint16("x00280100");
   const stored = ds.uint16("x00280101") || bits || 0;
   const high = ds.uint16("x00280102") ?? stored - 1;

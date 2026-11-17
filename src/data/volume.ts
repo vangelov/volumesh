@@ -14,6 +14,7 @@ export type Volume = {
   worldToVolume: mat4;
 
   space?: string;
+  dicom?: { seriesUID: string; frameUID?: string; instanceUIDs: string[] };
 };
 
 export const Volume = {

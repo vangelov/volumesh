@@ -4,6 +4,7 @@ import type { World } from "./world";
 
 export type Mesh = {
   label: string;
+  color?: number[];
 
   points: Float32Array;
   indices: Uint32Array;

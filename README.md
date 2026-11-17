@@ -45,7 +45,11 @@ Builds the app for production in the `dist` folder.
 Use **Import DICOM Folder** to select a local folder (including subfolders).
 Each CT/MR Series Instance UID becomes a separate volume in the new anatomy;
 use **Volume → Variant** to switch series. Imports stay in memory for this session.
-Other modalities, including RTSTRUCT, are ignored for now.
+RTSTRUCT files in the folder are converted into named, colored 3D meshes and
+added to the anatomy's mesh controls. They are matched to their referenced CT/MR
+series by image and Frame of Reference UIDs. With structures present, volumes
+from a different frame are excluded; different frames require a registration
+transform and cannot be aligned by an LPS-to-RAS conversion alone.
 
 The importer supports classic single-frame monochrome 8/16-bit images with
 uncompressed little/big-endian or JPEG Lossless (.57/.70) transfer syntaxes.
@@ -56,6 +60,20 @@ a series UID and repeated spatial positions must be separated before import.
 Slices are sorted by Image Position Patient projected onto the orientation normal.
 Pixel Spacing and the full slice displacement (including affine gantry tilt) define
 the voxel axes in patient LPS millimeters. These convert to RAS and normalize
-against the combined volume bounds when no meshes exist. CT/MR from different
+against the combined volume bounds, including when RTSTRUCT meshes exist.
+Contours already use patient coordinates: meshes receive the same LPS-to-RAS
+conversion and display normalization, without fitting the volume to the meshes. CT/MR from different
 frames of reference are not registered automatically. Rescaled pixel intensities
 are normalized per volume to the renderer's existing 8-bit representation.
+
+RTSTRUCT closed contours are rasterized on the referenced image grid and converted
+to capped voxel-boundary surfaces. This preserves XOR holes and disjoint regions,
+but surfaces appear stepped at native image spacing. Contours between image planes
+are sampled to the nearest plane and reported in Info; open/point contours are
+skipped and reported. Slices without contours are left empty. Reconstruction is
+limited to 128 million voxels and two million vertices per ROI.
+
+The RTSTRUCT reader also recovers exports that store the scalar coordinate count
+in Number of Contour Points. It accepts this only when the complete numeric
+field contains exactly that many values arranged in XYZ triplets, and reports
+the corrected counts in Info. Other coordinate-count mismatches remain errors.

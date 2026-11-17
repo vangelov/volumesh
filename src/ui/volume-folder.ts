@@ -41,6 +41,8 @@ export function addVolumeFolder(
 
   const folder = pane.addFolder({ title: "Volume", expanded: true });
 
+  let updateDirectionLabels = () => {};
+
   if (anatomy.volumes.length > 1) {
     folder
       .addBinding(volumeState, "index", {
@@ -52,6 +54,7 @@ export function addVolumeFolder(
         })),
       })
       .on("change", (event) => {
+        updateDirectionLabels();
         onVolumeChange(event.value);
       });
   } else {
@@ -102,70 +105,31 @@ export function addVolumeFolder(
 
   folder.addBlade({ view: "separator" });
 
-  const volume = anatomy.volumes[volumeState.index];
-  const directionLabels = getDirectionLabels(volume.dirs);
-  const callbacksMap = new Map<string, () => void>();
-
-  callbacksMap.set(directionLabels[0].minLabel, () =>
-    folder.addBinding(volumeState, "xMin", {
+  const axes = [
+    { min: "xMin", max: "xMax" },
+    { min: "yMin", max: "yMax" },
+    { min: "zMin", max: "zMax" },
+  ] as const;
+  const initialLabels = getDirectionLabels(anatomy.volumes[volumeState.index].dirs);
+  const order = DIRECTION_LABELS_MIN_MAX_PAIRS.flat();
+  const controls = axes.flatMap((keys, axis) => [
+    { axis, side: "minLabel" as const, key: keys.min },
+    { axis, side: "maxLabel" as const, key: keys.max },
+  ]).sort((a, b) => order.indexOf(initialLabels[a.axis][a.side]) - order.indexOf(initialLabels[b.axis][b.side]));
+  const bindings = controls.map((control, index) => {
+    if (index % 2 === 0) folder.addBlade({ view: "separator" });
+    const binding = folder.addBinding(volumeState, control.key, {
       min: 0,
       max: 1,
       step: 0.001,
-      label: directionLabels[0].minLabel,
-    }),
-  );
-  callbacksMap.set(directionLabels[0].maxLabel, () =>
-    folder.addBinding(volumeState, "xMax", {
-      min: 0,
-      max: 1,
-      step: 0.001,
-      label: directionLabels[0].maxLabel,
-    }),
-  );
-
-  callbacksMap.set(directionLabels[1].minLabel, () =>
-    folder.addBinding(volumeState, "yMin", {
-      min: 0,
-      max: 1,
-      step: 0.001,
-      label: directionLabels[1].minLabel,
-    }),
-  );
-  callbacksMap.set(directionLabels[1].maxLabel, () =>
-    folder.addBinding(volumeState, "yMax", {
-      min: 0,
-      max: 1,
-      step: 0.001,
-      label: directionLabels[1].maxLabel,
-    }),
-  );
-
-  callbacksMap.set(directionLabels[2].minLabel, () =>
-    folder.addBinding(volumeState, "zMin", {
-      min: 0,
-      max: 1,
-      step: 0.001,
-      label: directionLabels[2].minLabel,
-    }),
-  );
-  callbacksMap.set(directionLabels[2].maxLabel, () =>
-    folder.addBinding(volumeState, "zMax", {
-      min: 0,
-      max: 1,
-      step: 0.001,
-      label: directionLabels[2].maxLabel,
-    }),
-  );
-
-  for (const [minLabel, maxLabel] of DIRECTION_LABELS_MIN_MAX_PAIRS) {
-    folder.addBlade({ view: "separator" });
-
-    const minCallback = callbacksMap.get(minLabel);
-    if (minCallback) minCallback();
-
-    const maxCallback = callbacksMap.get(maxLabel);
-    if (maxCallback) maxCallback();
-  }
+      label: initialLabels[control.axis][control.side],
+    });
+    return { ...control, binding };
+  });
+  updateDirectionLabels = () => {
+    const labels = getDirectionLabels(anatomy.volumes[volumeState.index].dirs);
+    for (const { axis, side, binding } of bindings) binding.label = labels[axis][side];
+  };
 
   return folder;
 }

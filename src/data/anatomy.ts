@@ -18,10 +18,10 @@ export const Anatomy = {
   create,
 };
 
-type CreateParams = Pick<Anatomy, "id" | "info" | "volumes" | "meshes">;
+type CreateParams = Pick<Anatomy, "id" | "info" | "volumes" | "meshes"> & { boundsFrom?: "meshes" | "volumes" };
 
-function create({ id, info, volumes, meshes }: CreateParams): Anatomy {
-  const world = meshes.length ? World.fromMeshes(meshes) : World.fromVolumes(volumes);
+function create({ id, info, volumes, meshes, boundsFrom = "meshes" }: CreateParams): Anatomy {
+  const world = boundsFrom === "volumes" || !meshes.length ? World.fromVolumes(volumes) : World.fromMeshes(meshes);
 
   const sortedNormalizedMeshes = Mesh.sort(meshes).map((mesh) =>
     Lib.pipe(
@@ -32,6 +32,8 @@ function create({ id, info, volumes, meshes }: CreateParams): Anatomy {
     ),
   );
 
+  // This matrix maps voxel geometry into the shared display coordinates; it
+  // does not estimate a registration or fit the image to individual meshes.
   const registeredVolumes = volumes.map((volume) =>
     Volume.register(volume, world),
   );

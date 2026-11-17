@@ -7,7 +7,7 @@ import { State } from "./state";
 import * as Data from "./data";
 import * as Render from "./render";
 
-import { importDicomVolumes } from "./lib/dicom";
+import { importDicomData } from "./lib/dicom";
 
 const importedAnatomies = new Map<string, Data.Anatomy>();
 
@@ -32,10 +32,24 @@ folderInput.addEventListener("change", async () => {
   importButton.disabled = true;
   state.progress = 0;
   try {
-    const volumes = await importDicomVolumes(files, (done, total) => { state.progress = done / total * 100; });
+    const { volumes, meshes, warnings } = await importDicomData(
+      files,
+      (done, total) => {
+        state.progress = (done / total) * 100;
+      },
+    );
     const name = files[0].webkitRelativePath.split("/")[0] || "DICOM";
     const id = `dicom-${crypto.randomUUID()}`;
-    const imported = Data.Anatomy.create({ id, volumes, meshes: [], info: { description: `${name}: ${volumes.length} DICOM volume(s). Patient LPS geometry converted to RAS.`, url: "" } });
+    const imported = Data.Anatomy.create({
+      id,
+      volumes,
+      meshes,
+      boundsFrom: "volumes",
+      info: {
+        description: `${name}: ${volumes.length} DICOM volume(s), ${meshes.length} RTSTRUCT mesh(es). Patient LPS geometry converted to RAS. ${warnings.join(" ")}`,
+        url: "",
+      },
+    });
     importedAnatomies.set(id, imported);
     Ui.addAnatomyOption(pane, id, name);
     state.anatomyId = id;
@@ -43,7 +57,9 @@ folderInput.addEventListener("change", async () => {
     pane.refresh();
   } catch (error) {
     console.error(error);
-    window.alert(`DICOM import failed: ${error instanceof Error ? error.message : error}`);
+    window.alert(
+      `DICOM import failed: ${error instanceof Error ? error.message : error}`,
+    );
   } finally {
     importButton.disabled = false;
     folderInput.value = "";
@@ -65,14 +81,17 @@ const renderer = await Render.Renderer.create(canvas);
 let loadVersion = 0;
 
 async function loadAndDisplayAnatomy(anatomyId: string) {
+  console.log("fuck");
   const version = ++loadVersion;
 
   state.progress = 0;
 
   const imported = importedAnatomies.get(anatomyId);
-  const data = imported ? { anatomy: imported, initialState: null } : await Server.loadAnatomy(anatomyId, (a, b) => {
-    state.progress = (a / b) * 100;
-  });
+  const data = imported
+    ? { anatomy: imported, initialState: null }
+    : await Server.loadAnatomy(anatomyId, (a, b) => {
+        state.progress = (a / b) * 100;
+      });
 
   if (version !== loadVersion) return;
   state.anatomyId = anatomyId;
@@ -81,7 +100,6 @@ async function loadAndDisplayAnatomy(anatomyId: string) {
   if (volumeFolder) volumeFolder.dispose();
   if (meshesFolder) meshesFolder.dispose();
 
-
   State.onAnatomyLoaded(state, data.anatomy, data.initialState);
 
   anatomy = data.anatomy;
@@ -89,12 +107,14 @@ async function loadAndDisplayAnatomy(anatomyId: string) {
   resetButton = Ui.addResetButton(pane, { onReset });
   infoFolder = Ui.addInfoFolder(pane, anatomy);
   volumeFolder = Ui.addVolumeFolder(pane, { anatomy, state, onVolumeChange });
-  meshesFolder = anatomy.meshes.length ? Ui.addMeshesFolder(pane, {
-    state,
-    anatomy,
-    onShowAllMeshes,
-    onHideAllMeshes,
-  }) : null;
+  meshesFolder = anatomy.meshes.length
+    ? Ui.addMeshesFolder(pane, {
+        state,
+        anatomy,
+        onShowAllMeshes,
+        onHideAllMeshes,
+      })
+    : null;
 
   renderer.cameraNeedsReset = true;
   renderer.meshesNeedUpdate = true;
@@ -126,10 +146,6 @@ function onReset() {
 }
 
 function onVolumeChange() {
-  if (anatomy) {
-    volumeFolder?.dispose();
-    volumeFolder = Ui.addVolumeFolder(pane, { anatomy, state, onVolumeChange });
-  }
   renderer.volumeNeedsUpdate = true;
 }
 
