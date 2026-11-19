@@ -8,7 +8,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "archive": "sh -c 'COPYFILE_DISABLE=1 tar -czf \"$1.tar.gz\" --exclude=\".DS_Store\" --exclude=\"._*\" -C \"$(dirname \"$1\")\" \"$(basename \"$1\")\"' --",
-    "test": "node tests/run.mjs"
+    "test": "node tests/run.mjs",
+    "test:worker": "npm run build && node tests/worker-smoke.mjs"
   },
   "devDependencies": {
     "@tweakpane/core": "^2.0.5",

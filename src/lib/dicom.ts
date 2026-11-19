@@ -2,7 +2,9 @@ import dicom from "dicom-parser";
 import type { DataSet } from "dicom-parser";
 import { Decoder } from "jpeg-lossless-decoder-js";
 import { mat4, vec3 } from "gl-matrix";
-import { meshesFromRtstruct } from "./rtstruct";
+import { DEFAULT_RECONSTRUCTION } from "./rtstruct";
+import type { ReconstructionMethod } from "./rtstruct";
+import { createReconstructor } from "./reconstruct";
 import type { Volume } from "../data/volume";
 import { TarrayUtils } from "./tarray-utils";
 
@@ -21,7 +23,7 @@ export async function importDicomVolumes(files: File[], onProgress: (done: numbe
   return (await importDicomData(files, onProgress)).volumes;
 }
 
-export async function importDicomData(files: File[], onProgress: (done: number, total: number) => void) {
+export async function importDicomData(files: File[], onProgress: (done: number, total: number) => void, method: ReconstructionMethod = DEFAULT_RECONSTRUCTION) {
   const series = new Map<string, Slice[]>();
   const structures: DataSet[] = [];
   const instances = new Set<string>();
@@ -60,10 +62,11 @@ export async function importDicomData(files: File[], onProgress: (done: number, 
     // Give the UI a chance to update between series.
     await new Promise(resolve => setTimeout(resolve, 0));
   }
-  const { meshes, warnings, frameUID } = meshesFromRtstruct(structures, volumes);
+  const reconstruct = createReconstructor(structures, volumes);
+  const { meshes, warnings, frameUID } = await reconstruct(method);
   const compatibleVolumes = frameUID ? volumes.filter(volume => volume.dicom?.frameUID === frameUID) : volumes;
   if (compatibleVolumes.length !== volumes.length) warnings.push(`Skipped ${volumes.length - compatibleVolumes.length} volume(s) in a different Frame of Reference.`);
-  return { volumes: compatibleVolumes, meshes, warnings };
+  return { volumes: compatibleVolumes, meshes, warnings, reconstruct: structures.length ? reconstruct : undefined };
 }
 
 function buildVolume(slices: Slice[]): Volume {

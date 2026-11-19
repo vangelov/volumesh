@@ -2,6 +2,10 @@ import type { DataSet } from 'dicom-parser';
 import { mat4, vec3 } from 'gl-matrix';
 import { Mesh } from '../data/mesh';
 import type { Volume } from '../data/volume';
+import { surfaceNets } from './surface-nets';
+
+export type ReconstructionMethod = 'smooth' | 'surface-nets' | 'voxel';
+export const DEFAULT_RECONSTRUCTION: ReconstructionMethod = 'smooth';
 
 const sequence = (ds: DataSet, tag: string) => (ds.elements[tag]?.items || []).map(item => item.dataSet!);
 export function decimals(ds: DataSet, tag: string, count?: number) {
@@ -28,7 +32,7 @@ export function decimals(ds: DataSet, tag: string, count?: number) {
 }
 
 /** Generate RAS patient-space surfaces, without moving them relative to the images. */
-export function meshesFromRtstruct(structures: DataSet[], volumes: Volume[]) {
+export function meshesFromRtstruct(structures: DataSet[], volumes: Volume[], method: ReconstructionMethod = DEFAULT_RECONSTRUCTION) {
   const meshes: Mesh[] = [], warnings: string[] = [];
   const usedFrames = new Set<string>();
   for (const structure of structures) {
@@ -104,7 +108,7 @@ export function meshesFromRtstruct(structures: DataSet[], volumes: Volume[]) {
           }
         }
       }
-      const mesh = surface(mask, [nx, ny, nz], affine, label);
+      const mesh = method === 'voxel' ? surface(mask, [nx, ny, nz], affine, label) : surfaceNets(mask, [nx, ny, nz], affine, label, method === 'smooth');
       if (mesh.indices.length) {
         if (roi.elements.x3006002a) mesh.color = decimals(roi, 'x3006002a', 3).map(v => Math.max(0, Math.min(255, v)) / 255);
         meshes.push(mesh);

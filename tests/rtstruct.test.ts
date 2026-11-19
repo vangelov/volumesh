@@ -103,5 +103,16 @@ const image=(z:number,series='2',frame='3',modality='MR')=>new File([part10([
 const imported=await importDicomData([image(2),new File([rt()],'structures.dcm'),image(0),image(1),image(0,'7','8','CT'),image(1,'7','8','CT')],()=>{});
 assert.equal(imported.volumes.length,1);assert.equal(imported.meshes.length,1);
 assert.equal(imported.meshes[0].label,'Target');
+assert.ok(imported.reconstruct);
+const original=await imported.reconstruct!('voxel');
+const unsmoothed=await imported.reconstruct!('surface-nets');
+const smoothed=await imported.reconstruct!('smooth');
+assert.equal(original.meshes.length,smoothed.meshes.length);
+assert.deepEqual(original.meshes[0].color,smoothed.meshes[0].color);
+assert.notDeepEqual(original.meshes[0].points,unsmoothed.meshes[0].points,'method switch reconstructs geometry');
+assert.deepEqual(unsmoothed.meshes[0].points,smoothed.meshes[0].points,'tiny ROI is preserved without relaxation');
+assert.deepEqual(imported.meshes[0].points,smoothed.meshes[0].points,'smoothed default selected');
 assert.match(imported.warnings.join(' '),/Skipped 1 volume/,'incompatible frame variants excluded from anatomy');
 console.log('RTSTRUCT tests passed: folder import, colors, LPS/RAS alignment, volume bounds, XOR, UN, frame validation.');
+
+export const workerJob = { structures: [rt()], volumes: [volume], method: 'smooth' as const };

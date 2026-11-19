@@ -1,4 +1,4 @@
-import { PicoGL, type Program, type App, type VertexArray } from "picogl";
+import { PicoGL, type Program, type App, type VertexArray, type VertexBuffer } from "picogl";
 import { mat4, vec3 } from "gl-matrix";
 
 import * as Lib from "../lib";
@@ -24,6 +24,7 @@ export class Renderer {
   params: Params;
   pico: App;
   meshesVertexArrays: Array<VertexArray>;
+  meshBuffers: VertexBuffer[] = [];
   projMatrix: mat4;
   projViewMatrix: mat4;
   camera: Lib.OrbitCamera;
@@ -131,20 +132,18 @@ export class Renderer {
       });
     }
 
+    for (const buffer of this.meshBuffers) buffer.delete();
+    this.meshBuffers = [];
     this.meshesVertexArrays = meshes.map(({ points, normals, indices }) => {
       if (!normals) throw new Error("Missing normals");
-
-      return this.pico
-        .createVertexArray()
-        .vertexAttributeBuffer(
-          0,
-          this.pico.createVertexBuffer(PicoGL.FLOAT, 3, points),
-        )
-        .vertexAttributeBuffer(
-          1,
-          this.pico.createVertexBuffer(PicoGL.FLOAT, 3, normals),
-        )
-        .indexBuffer(this.pico.createIndexBuffer(PicoGL.UNSIGNED_INT, indices));
+      const positions = this.pico.createVertexBuffer(PicoGL.FLOAT, 3, points);
+      const normalBuffer = this.pico.createVertexBuffer(PicoGL.FLOAT, 3, normals);
+      const indexBuffer = this.pico.createIndexBuffer(PicoGL.UNSIGNED_INT, indices);
+      this.meshBuffers.push(positions, normalBuffer, indexBuffer);
+      return this.pico.createVertexArray()
+        .vertexAttributeBuffer(0, positions)
+        .vertexAttributeBuffer(1, normalBuffer)
+        .indexBuffer(indexBuffer);
     });
   }
 

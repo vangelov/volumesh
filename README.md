@@ -66,12 +66,30 @@ conversion and display normalization, without fitting the volume to the meshes. 
 frames of reference are not registered automatically. Rescaled pixel intensities
 are normalized per volume to the renderer's existing 8-bit representation.
 
-RTSTRUCT closed contours are rasterized on the referenced image grid and converted
-to capped voxel-boundary surfaces. This preserves XOR holes and disjoint regions,
-but surfaces appear stepped at native image spacing. Contours between image planes
-are sampled to the nearest plane and reported in Info; open/point contours are
-skipped and reported. Slices without contours are left empty. Reconstruction is
-limited to 128 million voxels and two million vertices per ROI.
+Use **RTSTRUCT Reconstruction → Method** before import or change it afterward
+to compare meshes without reloading the volume. The camera, volume settings,
+selected structure, mesh colors and visibility are preserved during comparison.
+
+- **Smoothed surface nets (default)**: an interpolated binary-mask surface with
+  10 paired Taubin smoothing iterations, constrained to original surface cells
+  to limit shape changes. Tiny components are preserved without smoothing.
+- **Surface nets**: the same interpolated surface without relaxation.
+- **Voxel boundaries (original)**: exposed voxel faces, useful as a baseline.
+
+Browser reconstruction runs in a worker. All methods share the same contour
+rasterization, patient coordinates, caps, XOR holes and volume normalization.
+The source contour resolution still limits detail: smoothing changes the surface
+approximation and does not recover missing anatomical detail. Missing contour
+slices remain empty; this does not interpolate across gaps. Contours between image
+planes are sampled to the nearest plane and reported in Info; open/point contours
+are skipped and reported. Limits are 128 million voxels and two million vertices
+per ROI. The smoother default is for visual comparison, not a guarantee of greater
+anatomical accuracy.
+
+The implementation combines dual surface nets, source-cell constraints and
+paired Taubin smoothing. Background: [Gibson, Constrained Elastic
+Surface Nets](https://merl.com/publications/docs/TR99-24.pdf) and
+[Taubin, A Signal Processing Approach to Fair Surface Design](https://doi.org/10.1145/218380.218473).
 
 The RTSTRUCT reader also recovers exports that store the scalar coordinate count
 in Number of Contour Points. It accepts this only when the complete numeric
