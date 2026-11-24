@@ -21,6 +21,7 @@ export const State = {
 type VolumeState = {
   index: number;
   show: boolean;
+  maskWithMeshes: boolean;
 
   windowCenter: number;
   windowWidth: number;
@@ -65,15 +66,21 @@ function create(anatomyId: string): State {
 function onAnatomyLoaded(
   state: State,
   anatomy: Data.Anatomy,
-  initialAnatomyState?: AnatomyState | null,
+  initialAnatomyState?: (Omit<AnatomyState, "volume"> & {
+    volume: Omit<VolumeState, "maskWithMeshes"> & Partial<Pick<VolumeState, "maskWithMeshes">>;
+  }) | null,
 ) {
   let anatomyState = state.byAnatomyId[anatomy.id];
 
   if (!anatomyState) {
-    anatomyState = initialAnatomyState || {
+    anatomyState = initialAnatomyState ? {
+      ...initialAnatomyState,
+      volume: { maskWithMeshes: true, ...initialAnatomyState.volume },
+    } : {
       volume: {
         index: 0,
         show: true,
+        maskWithMeshes: true,
 
         windowCenter: 0.5,
         windowWidth: 0.5,
@@ -139,6 +146,7 @@ function onReset(state: State) {
 
   anatomyState.volume.index = cachedState.volume.index;
   anatomyState.volume.show = cachedState.volume.show;
+  anatomyState.volume.maskWithMeshes = cachedState.volume.maskWithMeshes;
 
   anatomyState.volume.windowCenter = cachedState.volume.windowCenter;
   anatomyState.volume.windowWidth = cachedState.volume.windowWidth;

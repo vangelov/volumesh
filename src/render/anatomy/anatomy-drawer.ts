@@ -143,6 +143,7 @@ export class AnatomyDrawer {
       )
       .uniform("clip_sphere_radius", anatomyState.meshes.clipRadius)
       .uniform("show_volume", anatomyState.volume.show)
+      .uniform("mask_volume_with_meshes", anatomyState.volume.maskWithMeshes)
       .uniform("viewport", vec2.fromValues(this.pico.width, this.pico.height))
       .draw();
   }

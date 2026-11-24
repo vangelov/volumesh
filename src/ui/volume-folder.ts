@@ -71,6 +71,10 @@ export function addVolumeFolder(
     label: "Show",
   });
 
+  folder.addBinding(volumeState, "maskWithMeshes", {
+    label: "Mask with Meshes",
+  });
+
   folder.addBlade({ view: "separator" });
 
   folder.addBinding(volumeState, "windowCenter", {

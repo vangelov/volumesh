@@ -32,6 +32,7 @@ precision highp float;
 
 uniform highp sampler3D volume;
 uniform bool show_volume;
+uniform bool mask_volume_with_meshes;
 
 uniform highp sampler2D mesh_layer0;
 uniform highp sampler2D mesh_layer1;
@@ -229,8 +230,9 @@ void main(void) {
     float mesh_t[8];
     preload_mesh_layers(uv, mesh_packed, mesh_depth);
 
-    // FAST PATH: OIT meshes only, no volume raymarching.
-    if (!show_volume) {
+    // A visible mesh masks the entire volume ray at this pixel.
+    bool mesh_covers_pixel = mesh_layer_count > 0 && mesh_alpha > 0.0 && mesh_depth[0] < 0.999999;
+    if (!show_volume || (mask_volume_with_meshes && mesh_covers_pixel)) {
         color = vec4(0.0);
 
         composite_mesh_layers_only(color, mesh_packed);
